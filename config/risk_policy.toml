@@ -1,0 +1,19 @@
+# Risk policy: which fields a human sees. This is a business decision, not a model decision.
+#
+#   high   - always goes to a human, flagged or not
+#   medium - goes to a human only if a check flagged it
+#   low    - never shown, even if flagged (flags are still logged for quality measurement)
+#
+# Field names: header fields as in the schema, line item fields as "line_items.<name>".
+
+default = "medium"
+
+[fields]
+# Money leaves the company: wrong account or amount = wrong payment.
+total = "high"
+supplier_account = "high"
+supplier_bank_code = "high"
+
+# Nothing downstream acts on these automatically.
+payment_terms = "low"
+expense_category = "low"

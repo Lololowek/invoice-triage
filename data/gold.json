@@ -1,0 +1,648 @@
+{
+  "version": 1,
+  "description": "Correct field values for the synthetic invoices. Values are normalized the way the pipeline normalizes them: ISO dates, decimal amounts, compact identifiers, ISO currency codes, text exactly as printed. null = not in the document.",
+  "documents": {
+    "inv_01_kz_logistics.pdf": {
+      "fields": {
+        "supplier_name": "ТОО «Арна Логистик»",
+        "supplier_tax_id": "150241746527",
+        "supplier_account": "KZ55722KZT9989538597",
+        "supplier_bank_code": "QFQPKZ39",
+        "buyer_name": "ТОО «Кестрел Дата»",
+        "buyer_tax_id": "180541184580",
+        "invoice_number": "45",
+        "contract_number": "12/2025-ТЭ",
+        "issue_date": "2026-01-15",
+        "due_date": "2026-01-30",
+        "currency": "KZT",
+        "subtotal": null,
+        "tax_amount": "49931.03",
+        "total": "362000.00",
+        "payment_terms": "Оплата в течение 10 банковских дней"
+      },
+      "line_items": [
+        {
+          "description": "Экспедирование груза Алматы — Астана",
+          "quantity": "2",
+          "unit_price": "150000.00",
+          "amount": "300000.00"
+        },
+        {
+          "description": "Погрузочно-разгрузочные работы",
+          "quantity": "4",
+          "unit_price": "12500.00",
+          "amount": "50000.00"
+        },
+        {
+          "description": "Хранение груза на складе",
+          "quantity": "10",
+          "unit_price": "1200.00",
+          "amount": "12000.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "logistics",
+        "is_credit_note": false
+      },
+      "notes": "VAT included ('в том числе'), no printed subtotal; contract date next to contract number; total printed twice; Кбе/КНП codes as noise numbers"
+    },
+    "inv_02_kz_it.pdf": {
+      "fields": {
+        "supplier_name": "ТОО «Тенгри Софт»",
+        "supplier_tax_id": "170943304360",
+        "supplier_account": "KZ97914KZT8541410221",
+        "supplier_bank_code": "XZJRKZ26",
+        "buyer_name": "ТОО «Кестрел Дата»",
+        "buyer_tax_id": "180541184580",
+        "invoice_number": "0012",
+        "contract_number": null,
+        "issue_date": "2026-01-20",
+        "due_date": "2026-02-04",
+        "currency": "KZT",
+        "subtotal": null,
+        "tax_amount": "69241.38",
+        "total": "502000.00",
+        "payment_terms": null
+      },
+      "line_items": [
+        {
+          "description": "Сопровождение 1С: Бухгалтерия, январь",
+          "quantity": "1",
+          "unit_price": "280000.00",
+          "amount": "280000.00"
+        },
+        {
+          "description": "Доработка отчётных форм",
+          "quantity": "12",
+          "unit_price": "18500.00",
+          "amount": "222000.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "it_services",
+        "is_credit_note": false
+      },
+      "notes": "NO contract number; dates as «20» января 2026 г."
+    },
+    "inv_03_kz_office.pdf": {
+      "fields": {
+        "supplier_name": "ТОО «Канцлер Плюс»",
+        "supplier_tax_id": "131144394289",
+        "supplier_account": "KZ03722KZT9901426091",
+        "supplier_bank_code": "CLGXKZI6",
+        "buyer_name": "ТОО «Кестрел Дата»",
+        "buyer_tax_id": "180541184580",
+        "invoice_number": "318",
+        "contract_number": "ДП-0457",
+        "issue_date": "2026-01-22",
+        "due_date": null,
+        "currency": "KZT",
+        "subtotal": null,
+        "tax_amount": "17800.00",
+        "total": "129050.00",
+        "payment_terms": "100% предоплата"
+      },
+      "line_items": [
+        {
+          "description": "Бумага офисная А4, 500 л.",
+          "quantity": "20",
+          "unit_price": "2350.00",
+          "amount": "47000.00"
+        },
+        {
+          "description": "Картридж лазерный универсальный",
+          "quantity": "3",
+          "unit_price": "18900.00",
+          "amount": "56700.00"
+        },
+        {
+          "description": "Папка-регистратор 75 мм",
+          "quantity": "15",
+          "unit_price": "990.00",
+          "amount": "14850.00"
+        },
+        {
+          "description": "Ручка шариковая синяя",
+          "quantity": "50",
+          "unit_price": "120.00",
+          "amount": "6000.00"
+        },
+        {
+          "description": "Стикеры 76×76 мм",
+          "quantity": "10",
+          "unit_price": "450.00",
+          "amount": "4500.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "office_supplies",
+        "is_credit_note": false
+      },
+      "notes": "no due date; power of attorney '№ 17 от 12.01.2026' is a second numbered document; numbers inside descriptions (500 л., 75 мм)"
+    },
+    "inv_04_ru_consulting.pdf": {
+      "fields": {
+        "supplier_name": "ООО «Северный Ветер Консалтинг»",
+        "supplier_tax_id": "7855561039",
+        "supplier_account": "40702810103010665084",
+        "supplier_bank_code": "044525446",
+        "buyer_name": "ООО «Кестрел Дата Рус»",
+        "buyer_tax_id": "7780422927",
+        "invoice_number": "СЧ-00045",
+        "contract_number": "77/К-2025",
+        "issue_date": "2026-01-15",
+        "due_date": "2026-01-26",
+        "currency": "RUB",
+        "subtotal": "217000.00",
+        "tax_amount": "47740.00",
+        "total": "264740.00",
+        "payment_terms": "Оплата в течение 5 рабочих дней"
+      },
+      "line_items": [
+        {
+          "description": "Консультации по налоговому планированию",
+          "quantity": "16",
+          "unit_price": "9500.00",
+          "amount": "152000.00"
+        },
+        {
+          "description": "Подготовка аналитической записки",
+          "quantity": "1",
+          "unit_price": "65000.00",
+          "amount": "65000.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "consulting",
+        "is_credit_note": false
+      },
+      "notes": "р/с and к/с both printed (20 digits each); two ИНН/КПП pairs"
+    },
+    "inv_05_ru_rent.pdf": {
+      "fields": {
+        "supplier_name": "ООО «Бизнес-центр Гранат»",
+        "supplier_tax_id": "7739906349",
+        "supplier_account": "40702810804165612984",
+        "supplier_bank_code": "044525712",
+        "buyer_name": "ООО «Кестрел Дата Рус»",
+        "buyer_tax_id": "7780422927",
+        "invoice_number": "117",
+        "contract_number": "А-14/2024",
+        "issue_date": "2026-02-05",
+        "due_date": "2026-02-10",
+        "currency": "RUB",
+        "subtotal": null,
+        "tax_amount": null,
+        "total": "200000.00",
+        "payment_terms": null
+      },
+      "line_items": [
+        {
+          "description": "Аренда офиса 214, февраль",
+          "quantity": "1",
+          "unit_price": "185000.00",
+          "amount": "185000.00"
+        },
+        {
+          "description": "Парковочное место",
+          "quantity": "2",
+          "unit_price": "7500.00",
+          "amount": "15000.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "rent",
+        "is_credit_note": false
+      },
+      "notes": "'Без НДС' (no tax); landlord/tenant labels instead of supplier/buyer; contract dated 2024"
+    },
+    "inv_06_ru_marketing.pdf": {
+      "fields": {
+        "supplier_name": "ООО «Медиа Кит»",
+        "supplier_tax_id": "7723995537",
+        "supplier_account": "40702810701048114199",
+        "supplier_bank_code": "044525980",
+        "buyer_name": "ООО «Кестрел Дата Рус»",
+        "buyer_tax_id": "7780422927",
+        "invoice_number": "2026/031",
+        "contract_number": null,
+        "issue_date": "2026-01-28",
+        "due_date": "2026-02-06",
+        "currency": "RUB",
+        "subtotal": "162000.00",
+        "tax_amount": "35640.00",
+        "total": "197640.00",
+        "payment_terms": "Предоплата 100%"
+      },
+      "line_items": [
+        {
+          "description": "Таргетированная реклама, январь",
+          "quantity": "1",
+          "unit_price": "120000.00",
+          "amount": "120000.00"
+        },
+        {
+          "description": "Дизайн рекламных баннеров",
+          "quantity": "6",
+          "unit_price": "4500.00",
+          "amount": "27000.00"
+        },
+        {
+          "description": "Отчёт по эффективности кампании",
+          "quantity": "1",
+          "unit_price": "15000.00",
+          "amount": "15000.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "marketing",
+        "is_credit_note": false
+      },
+      "notes": "NO contract number, but an order number '№ 3318' that a naive model files as one"
+    },
+    "inv_07_uk_software.pdf": {
+      "fields": {
+        "supplier_name": "Brightline Analytics Ltd",
+        "supplier_tax_id": "GB947145946",
+        "supplier_account": "GB81DHBS31693923368289",
+        "supplier_bank_code": "HNWVGBKU",
+        "buyer_name": "Kestrel Data UK Ltd",
+        "buyer_tax_id": "GB451851468",
+        "invoice_number": "INV-2026-0042",
+        "contract_number": "MSA-2025-031",
+        "issue_date": "2026-01-15",
+        "due_date": "2026-02-14",
+        "currency": "GBP",
+        "subtotal": "2450.00",
+        "tax_amount": "490.00",
+        "total": "2940.00",
+        "payment_terms": "Net 30"
+      },
+      "line_items": [
+        {
+          "description": "Analytics Platform licence, Jan",
+          "quantity": "25",
+          "unit_price": "48.00",
+          "amount": "1200.00"
+        },
+        {
+          "description": "Premium support, Jan",
+          "quantity": "1",
+          "unit_price": "350.00",
+          "amount": "350.00"
+        },
+        {
+          "description": "Onboarding workshop (remote)",
+          "quantity": "1.5",
+          "unit_price": "600.00",
+          "amount": "900.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "software",
+        "is_credit_note": false
+      },
+      "notes": "PO number next to the agreement reference; fractional quantity"
+    },
+    "inv_08_nl_consulting.pdf": {
+      "fields": {
+        "supplier_name": "Vossberg Consulting B.V.",
+        "supplier_tax_id": "NL804353077B01",
+        "supplier_account": "NL02FOEX9098224331",
+        "supplier_bank_code": "QFWRNLBS",
+        "buyer_name": "Kestrel Data B.V.",
+        "buyer_tax_id": "NL088818652B01",
+        "invoice_number": "2026-0007",
+        "contract_number": null,
+        "issue_date": "2026-01-15",
+        "due_date": "2026-01-29",
+        "currency": "EUR",
+        "subtotal": "11980.00",
+        "tax_amount": "2515.80",
+        "total": "14495.80",
+        "payment_terms": "Payment within 14 days"
+      },
+      "line_items": [
+        {
+          "description": "Data governance assessment",
+          "quantity": "6",
+          "unit_price": "1450.00",
+          "amount": "8700.00"
+        },
+        {
+          "description": "Workshop facilitation",
+          "quantity": "2",
+          "unit_price": "1450.00",
+          "amount": "2900.00"
+        },
+        {
+          "description": "Travel expenses (flat rate)",
+          "quantity": "1",
+          "unit_price": "380.00",
+          "amount": "380.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "consulting",
+        "is_credit_note": false
+      },
+      "notes": "NO contract number; ISO dates; 1.234,56 number format in an English document"
+    },
+    "inv_09_uk_credit_note.pdf": {
+      "fields": {
+        "supplier_name": "Brightline Analytics Ltd",
+        "supplier_tax_id": "GB947145946",
+        "supplier_account": "GB81DHBS31693923368289",
+        "supplier_bank_code": "HNWVGBKU",
+        "buyer_name": "Kestrel Data UK Ltd",
+        "buyer_tax_id": "GB451851468",
+        "invoice_number": "CN-2026-007",
+        "contract_number": "MSA-2025-031",
+        "issue_date": "2026-01-20",
+        "due_date": null,
+        "currency": "GBP",
+        "subtotal": "-390.00",
+        "tax_amount": "-78.00",
+        "total": "-468.00",
+        "payment_terms": null
+      },
+      "line_items": [
+        {
+          "description": "Credit: unused seats, Dec",
+          "quantity": "5",
+          "unit_price": "-48.00",
+          "amount": "-240.00"
+        },
+        {
+          "description": "Credit: support SLA breach",
+          "quantity": "1",
+          "unit_price": "-150.00",
+          "amount": "-150.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "software",
+        "is_credit_note": true
+      },
+      "notes": "credit note with negative amounts; references the original invoice number and date"
+    },
+    "inv_10_ee_it.pdf": {
+      "fields": {
+        "supplier_name": "Lumenta OÜ",
+        "supplier_tax_id": "EE100314566",
+        "supplier_account": "EE855072925168641346",
+        "supplier_bank_code": "FZRHEEOZ",
+        "buyer_name": "Kestrel Data LLP",
+        "buyer_tax_id": "180541184580",
+        "invoice_number": "2026-117",
+        "contract_number": "SA-2025/88",
+        "issue_date": "2026-01-15",
+        "due_date": "2026-02-14",
+        "currency": "USD",
+        "subtotal": null,
+        "tax_amount": null,
+        "total": "11880.00",
+        "payment_terms": "Net 30 days"
+      },
+      "line_items": [
+        {
+          "description": "Backend development",
+          "quantity": "120",
+          "unit_price": "85.00",
+          "amount": "10200.00"
+        },
+        {
+          "description": "Code review and QA",
+          "quantity": "24",
+          "unit_price": "70.00",
+          "amount": "1680.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "it_services",
+        "is_credit_note": false
+      },
+      "notes": "no VAT (export of services); four dates; US-style 'January 15, 2026'"
+    },
+    "inv_11_lt_equipment.pdf": {
+      "fields": {
+        "supplier_name": "Baltic Rack Systems UAB",
+        "supplier_tax_id": "LT027541292",
+        "supplier_account": "LT076265059168819150",
+        "supplier_bank_code": "FBCLLTZS",
+        "buyer_name": "Kestrel Data GmbH",
+        "buyer_tax_id": "DE642081827",
+        "invoice_number": "BRS-26-0019",
+        "contract_number": null,
+        "issue_date": "2026-01-15",
+        "due_date": null,
+        "currency": "EUR",
+        "subtotal": "3453.40",
+        "tax_amount": "0.00",
+        "total": "3453.40",
+        "payment_terms": "Prepayment"
+      },
+      "line_items": [
+        {
+          "description": "Server rack 42U, 800x1000",
+          "quantity": "2",
+          "unit_price": "1240.00",
+          "amount": "2480.00"
+        },
+        {
+          "description": "PDU 16A, 24 outlets",
+          "quantity": "4",
+          "unit_price": "189.50",
+          "amount": "758.00"
+        },
+        {
+          "description": "Cable management kit",
+          "quantity": "6",
+          "unit_price": "35.90",
+          "amount": "215.40"
+        }
+      ],
+      "derived": {
+        "expense_category": "equipment",
+        "is_credit_note": false
+      },
+      "notes": "NO contract and NO due date; order and delivery dates; VAT printed as 0.00"
+    },
+    "inv_12_ie_travel.pdf": {
+      "fields": {
+        "supplier_name": "Cliffside Events Ltd",
+        "supplier_tax_id": "IE8454886WA",
+        "supplier_account": "IE07MHUK48215010492167",
+        "supplier_bank_code": "FZVCIEF2",
+        "buyer_name": "Kestrel Data UK Ltd",
+        "buyer_tax_id": "GB451851468",
+        "invoice_number": "CE-4471",
+        "contract_number": "EV-2026/004",
+        "issue_date": "2026-01-15",
+        "due_date": "2026-02-14",
+        "currency": "EUR",
+        "subtotal": "2390.00",
+        "tax_amount": "549.70",
+        "total": "2939.70",
+        "payment_terms": null
+      },
+      "line_items": [
+        {
+          "description": "Conference package, per delegate",
+          "quantity": "2",
+          "unit_price": "690.00",
+          "amount": "1380.00"
+        },
+        {
+          "description": "Hotel, single room",
+          "quantity": "6",
+          "unit_price": "145.00",
+          "amount": "870.00"
+        },
+        {
+          "description": "Airport transfers",
+          "quantity": "4",
+          "unit_price": "35.00",
+          "amount": "140.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "travel",
+        "is_credit_note": false
+      },
+      "notes": "booking reference next to agreement number; ISO dates; no payment terms"
+    },
+    "inv_13_de_software.pdf": {
+      "fields": {
+        "supplier_name": "Nordwerk Systems GmbH",
+        "supplier_tax_id": "DE294248889",
+        "supplier_account": "DE89596419040224724621",
+        "supplier_bank_code": "WDWCDELB",
+        "buyer_name": "Kestrel Data GmbH",
+        "buyer_tax_id": "DE642081827",
+        "invoice_number": "RE-2026-0113",
+        "contract_number": "RV-2024-17",
+        "issue_date": "2026-01-15",
+        "due_date": "2026-01-29",
+        "currency": "EUR",
+        "subtotal": "14540.00",
+        "tax_amount": "2762.60",
+        "total": "17302.60",
+        "payment_terms": "14 days net"
+      },
+      "line_items": [
+        {
+          "description": "Backend development, sprints 23–24",
+          "quantity": "84",
+          "unit_price": "105.00",
+          "amount": "8820.00"
+        },
+        {
+          "description": "Project management",
+          "quantity": "16",
+          "unit_price": "95.00",
+          "amount": "1520.00"
+        },
+        {
+          "description": "Cloud infrastructure setup",
+          "quantity": "1",
+          "unit_price": "4200.00",
+          "amount": "4200.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "it_services",
+        "is_credit_note": false
+      },
+      "notes": "due date only inside a sentence ('transfer the amount by ...'); service period dates; contract named in the intro sentence"
+    },
+    "inv_14_de_equipment.pdf": {
+      "fields": {
+        "supplier_name": "Hallmann Bürotechnik GmbH",
+        "supplier_tax_id": "DE907020143",
+        "supplier_account": "DE66210375916576986229",
+        "supplier_bank_code": "QNDWDEDH",
+        "buyer_name": "Kestrel Data GmbH",
+        "buyer_tax_id": "DE642081827",
+        "invoice_number": "2026-00381",
+        "contract_number": null,
+        "issue_date": "2026-01-20",
+        "due_date": "2026-01-30",
+        "currency": "EUR",
+        "subtotal": "4520.40",
+        "tax_amount": "858.88",
+        "total": "5379.28",
+        "payment_terms": "Payable within 10 days without deduction"
+      },
+      "line_items": [
+        {
+          "description": "Monitor 27 inch, 4K",
+          "quantity": "6",
+          "unit_price": "389.00",
+          "amount": "2334.00"
+        },
+        {
+          "description": "Docking station USB-C",
+          "quantity": "6",
+          "unit_price": "149.90",
+          "amount": "899.40"
+        },
+        {
+          "description": "Ergonomic office chair",
+          "quantity": "3",
+          "unit_price": "429.00",
+          "amount": "1287.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "equipment",
+        "is_credit_note": false
+      },
+      "notes": "NO contract number, but a delivery note number; delivery date"
+    },
+    "inv_15_at_hosting.pdf": {
+      "fields": {
+        "supplier_name": "Alpenwolke Hosting GmbH",
+        "supplier_tax_id": "ATU89571050",
+        "supplier_account": "AT670339230567625138",
+        "supplier_bank_code": "HXLCAT0T",
+        "buyer_name": "Kestrel Data GmbH",
+        "buyer_tax_id": "DE642081827",
+        "invoice_number": "AW-26-00094",
+        "contract_number": "AW-2023-0912",
+        "issue_date": "2026-01-31",
+        "due_date": null,
+        "currency": "EUR",
+        "subtotal": "1584.00",
+        "tax_amount": "316.80",
+        "total": "1900.80",
+        "payment_terms": "Payable within 30 days without deduction"
+      },
+      "line_items": [
+        {
+          "description": "Managed Kubernetes cluster, 3 nodes",
+          "quantity": "1",
+          "unit_price": "1350.00",
+          "amount": "1350.00"
+        },
+        {
+          "description": "Object storage",
+          "quantity": "2.4",
+          "unit_price": "22.50",
+          "amount": "54.00"
+        },
+        {
+          "description": "Backup service",
+          "quantity": "1",
+          "unit_price": "180.00",
+          "amount": "180.00"
+        }
+      ],
+      "derived": {
+        "expense_category": "it_services",
+        "is_credit_note": false
+      },
+      "notes": "NO due date; invoice and contract numbers share a prefix (AW-...); issue date equals the billing period end"
+    }
+  }
+}
