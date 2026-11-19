@@ -38,7 +38,9 @@ class OracleMapper:
         if self.inject:
             self.name = "oracle+" + ",".join(self.inject)
 
-    def map(self, text: str, candidates: list[Candidate]) -> FieldMapping:
+    def map(
+        self, text: str, candidates: list[Candidate], with_line_items: bool = True
+    ) -> FieldMapping:
         used: set[str] = set()
         header = {
             spec.name: self._slot(spec, self.gold["fields"].get(spec.name), candidates, used)

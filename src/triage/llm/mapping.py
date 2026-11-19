@@ -100,13 +100,23 @@ class MappingParseError(ValueError):
 
 
 def response_json_schema(
-    answer_format: AnswerFormat = "full", candidates: list[Candidate] | None = None
+    answer_format: AnswerFormat = "full",
+    candidates: list[Candidate] | None = None,
+    with_line_items: bool = True,
 ) -> dict[str, Any]:
     """Strict schema for constrained decoding: all keys required, no defaults, no extras."""
-    if answer_format == "compact":
-        return compact_json_schema(candidates)
-    schema = copy.deepcopy(FieldMapping.model_json_schema())
+    schema = (
+        compact_json_schema(candidates)
+        if answer_format == "compact"
+        else _strict(copy.deepcopy(FieldMapping.model_json_schema()))
+    )
+    if not with_line_items:
+        schema["properties"].pop("line_items")
+        schema["required"].remove("line_items")
+    return schema
 
+
+def _strict(schema: dict[str, Any]) -> dict[str, Any]:
     def strict(node: Any) -> None:
         if isinstance(node, dict):
             node.pop("default", None)

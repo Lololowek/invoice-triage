@@ -43,7 +43,10 @@ def _row(f: FieldResult, why: str) -> str:
 
 
 def render(result: InvoiceResult) -> str:
-    out = [f"{result.document}   mapper: {result.mapper}   candidates: {len(result.candidates)}"]
+    out = [
+        f"{result.document}   mapper: {result.mapper}   candidates: {len(result.candidates)}"
+        f"   line items by: {result.line_items_source}"
+    ]
     for flag in result.document_flags:
         out.append(f"  ! document: {flag.message}")
     review = [f for f in result.fields if f.needs_review]

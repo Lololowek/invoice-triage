@@ -15,6 +15,7 @@ fuzzy threshold of 90 would accept exactly the transposition this layer exists t
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 
@@ -292,6 +293,7 @@ def resolve(
     _check_required(results)
     _check_candidate_reuse(results)
     _check_identifier_uniqueness(results)
+    _check_party_proximity(results, text)
 
     document_flags: list[Flag] = []
     if not mapping.line_items:
@@ -336,3 +338,62 @@ def _check_identifier_uniqueness(results: list[FieldResult]) -> None:
             names = ", ".join(f.path for f in fields)
             for f in fields:
                 f.flag("grounding", "duplicate_identifier", f"{value} is assigned to {names}")
+
+
+# --- which party a tax ID belongs to ---
+
+PARTIES = (("supplier_name", "supplier_tax_id"), ("buyer_name", "buyer_tax_id"))
+
+
+def _occurrences(text: str, value: str) -> list[int]:
+    tokens = value.split()
+    if not tokens:
+        return []
+    pattern = re.compile(r"\s+".join(re.escape(t) for t in tokens), re.IGNORECASE)
+    return [m.start() for m in pattern.finditer(text)]
+
+
+def _check_party_proximity(results: list[FieldResult], text: str) -> None:
+    """A party's tax ID is printed next to that party's name: in the same requisites block, the
+    same "Seller: ..." line, the same footer. If the ID the model assigned to the supplier sits
+    closer to the buyer's name than to the supplier's, it was most likely taken from the wrong
+    block.
+
+    Distance is measured in lines first, characters second: two-column layouts interleave blocks
+    within a line, but rarely across lines. Equal distances are not flagged.
+
+    Measured on qwen3.5:4b: 6 of its 10 unnoticed errors were this - in the German letter layout
+    the buyer's address block, with its VAT ID, is printed above the supplier's requisites.
+    """
+    by_path = {r.path: r for r in results}
+    line_starts = [0] + [i + 1 for i, ch in enumerate(text) if ch == "\n"]
+
+    def position(offset: int) -> tuple[int, int]:
+        line = bisect_right(line_starts, offset) - 1
+        return line, offset - line_starts[line]
+
+    names: dict[str, list[tuple[int, int]]] = {}
+    for name_path, _ in PARTIES:
+        f = by_path.get(name_path)
+        if f is None or not isinstance(f.value, str):
+            return
+        offsets = _occurrences(text, f.value) or ([f.source.start] if f.source else [])
+        if not offsets:
+            return
+        names[name_path] = [position(o) for o in offsets]
+
+    def distance(at: tuple[int, int], name_path: str) -> tuple[int, int]:
+        return min((abs(at[0] - n[0]), abs(at[1] - n[1])) for n in names[name_path])
+
+    for own, other in ((PARTIES[0], PARTIES[1]), (PARTIES[1], PARTIES[0])):
+        tax_field = by_path.get(own[1])
+        if tax_field is None or tax_field.source is None:
+            continue
+        at = position(tax_field.source.start)
+        if distance(at, other[0]) < distance(at, own[0]):
+            party, other_party = own[0].split("_")[0], other[0].split("_")[0]
+            tax_field.flag(
+                "grounding",
+                "party_mismatch",
+                f"printed next to the {other_party}'s name, not the {party}'s",
+            )

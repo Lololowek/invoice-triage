@@ -55,6 +55,7 @@ class FieldResult(BaseModel):
 class InvoiceResult(BaseModel):
     document: str
     mapper: str  # which mapper produced the mapping: model name or "oracle"
+    line_items_source: Literal["code", "model"] = "model"  # see line_items.py
     fields: list[FieldResult]
     document_flags: list[Flag] = []  # problems that belong to no single field
     candidates: list[Candidate]

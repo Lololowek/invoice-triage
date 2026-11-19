@@ -19,7 +19,9 @@ from triage.llm.prompt import build_messages
 class Mapper(Protocol):
     name: str
 
-    def map(self, text: str, candidates: list[Candidate]) -> FieldMapping: ...
+    def map(
+        self, text: str, candidates: list[Candidate], with_line_items: bool = True
+    ) -> FieldMapping: ...
 
 
 class MappingError(RuntimeError):
@@ -37,9 +39,11 @@ class LLMMapper:
         self.name = f"{client.name} ({answer_format})"
         self.max_attempts = max_attempts
 
-    def map(self, text: str, candidates: list[Candidate]) -> FieldMapping:
-        messages = build_messages(text, candidates, self.answer_format)
-        schema = response_json_schema(self.answer_format, candidates)
+    def map(
+        self, text: str, candidates: list[Candidate], with_line_items: bool = True
+    ) -> FieldMapping:
+        messages = build_messages(text, candidates, self.answer_format, with_line_items)
+        schema = response_json_schema(self.answer_format, candidates, with_line_items)
         error: MappingParseError | None = None
         for _ in range(self.max_attempts):
             raw = self.client.complete(messages, schema, "invoice_field_mapping")
