@@ -81,7 +81,9 @@ def check_arithmetic(fields: list[FieldResult]) -> None:
             )
             _flag(
                 by_path,
-                [f"line_items[{i}].amount" for i in range(n_items)] + ["subtotal", "total"],
+                # tax_amount takes part through "total - tax": a missing tax is a suspect too
+                [f"line_items[{i}].amount" for i in range(n_items)]
+                + ["subtotal", "tax_amount", "total"],
                 "sum_mismatch",
                 f"sum of line amounts is {lines_sum}; matches none of: {stated}",
             )
