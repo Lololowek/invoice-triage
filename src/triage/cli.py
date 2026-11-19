@@ -5,21 +5,24 @@ triage run INVOICE.pdf --oracle data/gold.json [--inject transpose:total]
 triage run INVOICE.pdf --json
 triage candidates INVOICE.pdf [--annotated]
 triage text INVOICE.pdf
+triage serve [--host 127.0.0.1] [--port 8000]   # HTTP API, see triage/api.py
 """
 
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import sys
 from pathlib import Path
 
 from triage.candidates import extract_candidates
+from triage.env import load_env_file
 from triage.llm.client import ConfigError, LLMSettings, OpenAICompatibleClient
 from triage.llm.mapper import LLMMapper, Mapper
 from triage.llm.oracle import OracleMapper
 from triage.llm.prompt import annotate
-from triage.pdf_text import NoTextLayerError, extract_text
+from triage.pdf_text import NotAPdfError, NoTextLayerError, extract_text
 from triage.pipeline import process_pdf
 from triage.policy import RiskPolicy
 from triage.result import FieldResult, InvoiceResult
@@ -66,6 +69,17 @@ def render(result: InvoiceResult) -> str:
     return "\n".join(out)
 
 
+def _expand(patterns: list[str]) -> list[Path]:
+    """Expand wildcards here: cmd and PowerShell pass 'data/invoices/*.pdf' through unexpanded."""
+    paths: list[Path] = []
+    for pattern in patterns:
+        matches = sorted(glob.glob(pattern)) if glob.has_magic(pattern) else [pattern]
+        if not matches:
+            raise SystemExit(f"no files match {pattern}")
+        paths += map(Path, matches)
+    return paths
+
+
 def _mapper(args: argparse.Namespace, pdf: Path) -> Mapper:
     if args.oracle:
         gold = json.loads(Path(args.oracle).read_text(encoding="utf-8"))
@@ -82,7 +96,7 @@ def _mapper(args: argparse.Namespace, pdf: Path) -> Mapper:
 def cmd_run(args: argparse.Namespace) -> int:
     policy = RiskPolicy.load(args.policy)
     results = []
-    for pdf in map(Path, args.pdf):
+    for pdf in _expand(args.pdf):
         result = process_pdf(pdf, _mapper(args, pdf), policy)
         results.append(result)
         if not args.json:
@@ -114,7 +128,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
         raise SystemExit("--inject works only with --oracle")
     args.oracle = args.gold if args.use_oracle else None
     report = evaluate.run(
-        [Path(p) for p in args.pdf], Path(args.gold), lambda pdf: _mapper(args, pdf),
+        _expand(args.pdf), Path(args.gold), lambda pdf: _mapper(args, pdf),
         RiskPolicy.load(args.policy),
     )  # fmt: skip
     print(evaluate.render(report))
@@ -126,9 +140,27 @@ def cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    from triage.api import create_app
+
+    uvicorn.run(create_app(), host=args.host, port=args.port)
+    return 0
+
+
 def cmd_text(args: argparse.Namespace) -> int:
     print(extract_text(args.pdf))
     return 0
+
+
+def _utf8_output() -> None:
+    """Windows writes redirected output in the ANSI code page (cp1251), which has no '×' or '≠'.
+    The console itself is unaffected: Python writes to it through the Unicode API."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -167,13 +199,20 @@ def main(argv: list[str] | None = None) -> int:
     text.add_argument("pdf")
     text.set_defaults(func=cmd_text)
 
+    serve = sub.add_parser("serve", help="run the HTTP API")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.set_defaults(func=cmd_serve)
+
     args = parser.parse_args(argv)
+    _utf8_output()
+    load_env_file()
     try:
         return args.func(args)
     except ConfigError as e:
         print(f"config error: {e}", file=sys.stderr)
         return 2
-    except NoTextLayerError as e:
+    except (NoTextLayerError, NotAPdfError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 

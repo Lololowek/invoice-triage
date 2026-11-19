@@ -16,9 +16,10 @@ from __future__ import annotations
 
 from itertools import pairwise
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 import pdfplumber
+from pdfplumber.utils.exceptions import PdfminerException
 
 PAGE_BREAK = "\n\f\n"
 COLUMN_GAP_EM = 0.6  # gap wider than 0.6 x font size = column; a space is ~0.3 em
@@ -27,6 +28,10 @@ BLANK_LINE_EM = 1.0  # vertical gap wider than this x font size = paragraph brea
 
 class NoTextLayerError(ValueError):
     """The PDF has no extractable text (a scan). OCR is not supported."""
+
+
+class NotAPdfError(ValueError):
+    """The file cannot be parsed as a PDF."""
 
 
 def _group_lines(words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
@@ -72,10 +77,15 @@ def page_text(page: Any) -> str:
     return "\n".join(out)
 
 
-def extract_text(path: str | Path) -> str:
-    with pdfplumber.open(path) as pdf:
-        pages = [page_text(page) for page in pdf.pages]
+def extract_text(source: str | Path | BinaryIO, name: str | None = None) -> str:
+    """`source` is a path or a binary stream (an upload); `name` is used in error messages."""
+    name = name or str(source)
+    try:
+        with pdfplumber.open(source) as pdf:
+            pages = [page_text(page) for page in pdf.pages]
+    except PdfminerException as e:
+        raise NotAPdfError(f"{name}: not a readable PDF ({e})") from e
     text = PAGE_BREAK.join(p for p in pages if p)
     if not text.strip():
-        raise NoTextLayerError(f"{path}: no text layer (scanned PDF?); OCR is not supported")
+        raise NoTextLayerError(f"{name}: no text layer (scanned PDF?); OCR is not supported")
     return text

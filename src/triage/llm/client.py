@@ -40,8 +40,8 @@ class LLMSettings:
         model = env.get("LLM_MODEL", "").strip()
         if not model:
             raise ConfigError(
-                "LLM_MODEL is not set. Copy .env.example to .env and export it, "
-                "or run with --oracle for an offline run."
+                "LLM_MODEL is not set. Copy .env.example to .env in the working directory "
+                "(it is read automatically), or run with --oracle for an offline run."
             )
         response_format = env.get("LLM_RESPONSE_FORMAT", "json_schema").strip()
         if response_format not in ("json_schema", "json_object"):
