@@ -43,6 +43,7 @@ from triage.schema import (
 )
 
 FUZZY_THRESHOLD = 90.0
+COLUMN_GAP = "  "  # see pdf_text: two spaces = a column boundary
 _SEPARATORS = " .,/-"
 
 
@@ -190,9 +191,11 @@ def _resolve_text_quote(result: FieldResult, quote: str, text: str) -> None:
         result.source = Source(
             via="quote", text=text[span[0] : span[1]], start=span[0], end=span[1]
         )
+        _check_single_cell(result, text, *span)
         return
     score, start, end = find_fuzzy(text, quote)
     if score >= FUZZY_THRESHOLD:
+        start, end = _strip_span(text, start, end)
         # The document is the source of truth: keep its spelling, not the model's.
         result.value = collapse_ws(text[start:end])
         result.source = Source(
@@ -203,6 +206,7 @@ def _resolve_text_quote(result: FieldResult, quote: str, text: str) -> None:
             match="fuzzy",
             score=round(score, 1),
         )
+        _check_single_cell(result, text, start, end)
         return
     result.value = collapse_ws(quote)
     result.flag(
@@ -210,6 +214,26 @@ def _resolve_text_quote(result: FieldResult, quote: str, text: str) -> None:
         "quote_not_found",
         f"quote not found in the document (best fuzzy match {score:.0f} < {FUZZY_THRESHOLD:.0f})",
     )
+
+
+def _strip_span(text: str, start: int, end: int) -> tuple[int, int]:
+    while start < end and text[start].isspace():
+        start += 1
+    while end > start and text[end - 1].isspace():
+        end -= 1
+    return start, end
+
+
+def _check_single_cell(result: FieldResult, text: str, start: int, end: int) -> None:
+    """A text value lives in one table cell or one paragraph. pdf_text separates columns with two
+    spaces, so a quote whose document span contains them has absorbed a neighbouring cell: a row
+    number, a unit, a price."""
+    if COLUMN_GAP in text[start:end].strip():
+        result.flag(
+            "grounding",
+            "quote_spans_columns",
+            "quote runs across a table column boundary (row number, unit or another cell)",
+        )
 
 
 def _resolve_typed_quote(result: FieldResult, spec: FieldSpec, slot: Slot, text: str) -> None:

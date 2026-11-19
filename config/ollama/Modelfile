@@ -1,0 +1,14 @@
+# Local model for invoice-triage:  ollama create invoice-4b -f config/ollama/Modelfile
+#
+# Overrides of qwen3.5:4b defaults, each one measured or observed:
+#   num_ctx 8192       without a GPU Ollama defaults to 4096; prompt (~2.3k) + answer must fit,
+#                      and an overflowing prompt is cut from the start without an error
+#   temperature 0      the same invoice must give the same mapping
+#   presence_penalty 0 the default 1.5 penalizes repeated tokens; a JSON answer is made of them
+#
+# Thinking cannot be switched off here. The client sends reasoning_effort="none"
+# (LLM_EXTRA_BODY in .env): Ollama's OpenAI endpoint ignores "think": false.
+FROM qwen3.5:4b
+PARAMETER num_ctx 8192
+PARAMETER temperature 0
+PARAMETER presence_penalty 0

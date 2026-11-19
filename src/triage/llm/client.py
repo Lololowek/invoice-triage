@@ -5,6 +5,7 @@ Configuration comes from the environment only; no keys in code:
     LLM_BASE_URL         e.g. http://localhost:11434/v1 (Ollama); unset = api.openai.com
     LLM_API_KEY          local servers ignore it, the client needs a non-empty string
     LLM_RESPONSE_FORMAT  json_schema (default) | json_object
+    LLM_ANSWER_FORMAT    compact (default) | full - see llm/mapping.py
     LLM_EXTRA_BODY       optional JSON merged into the request body
     LLM_TIMEOUT_S        default 180
 """
@@ -30,6 +31,7 @@ class LLMSettings:
     base_url: str | None = None
     api_key: str = "not-needed"
     response_format: Literal["json_schema", "json_object"] = "json_schema"
+    answer_format: Literal["compact", "full"] = "compact"
     timeout_s: float = 180.0
     extra_body: dict[str, Any] | None = None
 
@@ -46,6 +48,9 @@ class LLMSettings:
             raise ConfigError(
                 f"LLM_RESPONSE_FORMAT must be json_schema or json_object, got {response_format!r}"
             )
+        answer_format = env.get("LLM_ANSWER_FORMAT", "compact").strip()
+        if answer_format not in ("compact", "full"):
+            raise ConfigError(f"LLM_ANSWER_FORMAT must be compact or full, got {answer_format!r}")
         extra_raw = env.get("LLM_EXTRA_BODY", "").strip()
         try:
             extra_body = json.loads(extra_raw) if extra_raw else None
@@ -56,6 +61,7 @@ class LLMSettings:
             base_url=env.get("LLM_BASE_URL") or None,
             api_key=env.get("LLM_API_KEY") or "not-needed",
             response_format=response_format,  # type: ignore[arg-type]
+            answer_format=answer_format,  # type: ignore[arg-type]
             timeout_s=float(env.get("LLM_TIMEOUT_S", "180")),
             extra_body=extra_body,
         )

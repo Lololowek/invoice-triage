@@ -243,7 +243,11 @@ triage run data/invoices/inv_04_ru_consulting.pdf --oracle data/gold.json --inje
 **С локальной моделью через Ollama** (или vLLM — меняется только `LLM_BASE_URL`):
 
 ```bash
-ollama pull qwen3.5:9b
+ollama pull qwen3.5:4b
+```
+
+```bash
+ollama create invoice-4b -f config/ollama/Modelfile
 ```
 
 ```bash
@@ -256,6 +260,12 @@ set -a; . ./.env; set +a
 
 ```bash
 triage run data/invoices/inv_06_ru_marketing.pdf
+```
+
+**Замер на эталоне** — точность, «тихие» ошибки, нагрузка на человека, секунды на счёт:
+
+```bash
+triage eval data/invoices/*.pdf --out results.json
 ```
 
 Модель, адрес и ключ берутся только из переменных окружения (`.env.example`), ключей в коде нет.

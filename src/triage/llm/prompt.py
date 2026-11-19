@@ -9,24 +9,49 @@ from __future__ import annotations
 from triage.candidates import Candidate
 from triage.schema import DERIVED_FIELDS, HEADER_FIELDS, LINE_ITEM_FIELDS, FieldKind, FieldSpec
 
-SYSTEM_PROMPT = """\
+INTRO = """\
 You read an invoice and map its fields to candidates. The candidates (dates, amounts, \
 identifiers, currencies) were found in the text by deterministic code and are marked in the \
-document as value[[ID]].
+document as value[[ID]]. Pick by the LABEL next to the value (the date next to "Invoice date" / \
+"Дата счёта" is issue_date), not by the value. Never guess: if a field is not in the document, \
+answer null.
 
-Rules:
-1. Date, amount, identifier and currency fields: set "candidate" to the ID of the candidate \
-whose LABEL in the document matches the field (e.g. the date next to "Invoice date" / \
-"Дата счёта" is issue_date). The same value may appear several times; any of its IDs is fine.
-2. If the document does not contain a field, return all three keys as null. Never guess and \
-never reuse a candidate that belongs to another label. A missing contract number is normal.
-3. Text fields (names, payment terms, line descriptions) have no candidates: copy the exact \
-text from the document into "quote", character for character, without labels.
-4. Only if a value is clearly printed but has no [[ID]] marker: put the exact printed text in \
-"quote" and its normalized form in "value" (dates YYYY-MM-DD, amounts like 1234.56).
+Hints:
+- supplier = the party that issues the invoice and receives the money (Поставщик, Продавец, \
+Исполнитель, Арендодатель, Бенефициар, Seller, From, the letterhead); buyer = the party that \
+pays (Покупатель, Заказчик, Арендатор, Bill to, Client, Customer, the addressee).
+- contract_number = the number next to a contract label (Договор, Основание, Contract, \
+Agreement, framework agreement). Order, PO, customer, booking and delivery note numbers are \
+not contracts. No contract label in the document -> null.
+- quantity = the value in the quantity column (Кол-во, Qty, Quantity), never a row number \
+(№, Pos.) and never a number inside the description."""
+
+RULES: dict[str, str] = {
+    "compact": """\
+Answer with ONE flat JSON object; every field is one string or null:
+- date, amount, identifier and currency fields: the candidate ID, e.g. "D2";
+- text fields (names, payment terms, descriptions): the exact text from the document, \
+without the label; a description is only the item text, without row number or unit;
+- a value that is printed but has no [[ID]] marker: the exact printed text;
+- line_items: one object per row of the items table, in order;
+- expense_category and is_credit_note: your judgement about the whole document.
+Answer with JSON only.""",
+    "full": """\
+Fill one slot {"candidate", "quote", "value"} per field:
+1. Date, amount, identifier and currency fields: "candidate" = the candidate ID, e.g. "D2".
+2. Not in the document: all three keys null.
+3. Text fields (names, payment terms, descriptions): "quote" = the exact text from the \
+document, without the label; a description is only the item text, without row number or unit.
+4. Only if a value is printed but has no [[ID]] marker: "quote" = the exact printed text, \
+"value" = its normalized form (dates YYYY-MM-DD, amounts like 1234.56).
 5. line_items: one entry per row of the items table, in order.
-6. expense_category and is_credit_note are your judgement about the whole document.
-Answer with JSON only."""
+6. expense_category and is_credit_note: your judgement about the whole document.
+Answer with JSON only.""",
+}
+
+
+def system_prompt(answer_format: str = "compact") -> str:
+    return f"{INTRO}\n\n{RULES[answer_format]}"
 
 
 def annotate(text: str, candidates: list[Candidate]) -> str:
@@ -83,8 +108,10 @@ def build_user_prompt(text: str, candidates: list[Candidate]) -> str:
     )
 
 
-def build_messages(text: str, candidates: list[Candidate]) -> list[dict[str, str]]:
+def build_messages(
+    text: str, candidates: list[Candidate], answer_format: str = "compact"
+) -> list[dict[str, str]]:
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt(answer_format)},
         {"role": "user", "content": build_user_prompt(text, candidates)},
     ]

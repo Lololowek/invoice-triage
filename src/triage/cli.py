@@ -72,7 +72,8 @@ def _mapper(args: argparse.Namespace, pdf: Path) -> Mapper:
         return OracleMapper(document, inject=args.inject)
     if args.inject:
         raise SystemExit("--inject works only with --oracle")
-    return LLMMapper(OpenAICompatibleClient(LLMSettings.from_env()))
+    settings = LLMSettings.from_env()
+    return LLMMapper(OpenAICompatibleClient(settings), answer_format=settings.answer_format)
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -103,6 +104,25 @@ def cmd_candidates(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval(args: argparse.Namespace) -> int:
+    from triage import evaluate
+
+    if not args.use_oracle and args.inject:
+        raise SystemExit("--inject works only with --oracle")
+    args.oracle = args.gold if args.use_oracle else None
+    report = evaluate.run(
+        [Path(p) for p in args.pdf], Path(args.gold), lambda pdf: _mapper(args, pdf),
+        RiskPolicy.load(args.policy),
+    )  # fmt: skip
+    print(evaluate.render(report))
+    if args.out:
+        Path(args.out).write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"\nreport -> {args.out}")
+    return 0
+
+
 def cmd_text(args: argparse.Namespace) -> int:
     print(extract_text(args.pdf))
     return 0
@@ -125,6 +145,15 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--policy", help="risk policy TOML (default: config/risk_policy.toml)")
     run.add_argument("--json", action="store_true", help="machine-readable output")
     run.set_defaults(func=cmd_run)
+
+    ev = sub.add_parser("eval", help="measure accuracy and silent errors against gold.json")
+    ev.add_argument("pdf", nargs="+")
+    ev.add_argument("--gold", default="data/gold.json")
+    ev.add_argument("--oracle", dest="use_oracle", action="store_true", help="use the gold mapper")
+    ev.add_argument("--inject", action="append", default=[], metavar="SPEC")
+    ev.add_argument("--policy", help="risk policy TOML")
+    ev.add_argument("--out", help="write the full report as JSON")
+    ev.set_defaults(func=cmd_eval, oracle=None)
 
     cands = sub.add_parser("candidates", help="show candidates found in a PDF")
     cands.add_argument("pdf")

@@ -6,7 +6,13 @@ from typing import Protocol
 
 from triage.candidates import Candidate
 from triage.llm.client import ChatClient
-from triage.llm.mapping import FieldMapping, MappingParseError, parse_mapping, response_json_schema
+from triage.llm.mapping import (
+    AnswerFormat,
+    FieldMapping,
+    MappingParseError,
+    parse_mapping,
+    response_json_schema,
+)
 from triage.llm.prompt import build_messages
 
 
@@ -23,14 +29,17 @@ class MappingError(RuntimeError):
 class LLMMapper:
     """Asks the model for a mapping; on an unparseable answer retries once with the error."""
 
-    def __init__(self, client: ChatClient, max_attempts: int = 2) -> None:
+    def __init__(
+        self, client: ChatClient, answer_format: AnswerFormat = "compact", max_attempts: int = 2
+    ) -> None:
         self.client = client
-        self.name = client.name
+        self.answer_format = answer_format
+        self.name = f"{client.name} ({answer_format})"
         self.max_attempts = max_attempts
 
     def map(self, text: str, candidates: list[Candidate]) -> FieldMapping:
-        messages = build_messages(text, candidates)
-        schema = response_json_schema()
+        messages = build_messages(text, candidates, self.answer_format)
+        schema = response_json_schema(self.answer_format, candidates)
         error: MappingParseError | None = None
         for _ in range(self.max_attempts):
             raw = self.client.complete(messages, schema, "invoice_field_mapping")

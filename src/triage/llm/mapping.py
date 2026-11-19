@@ -1,6 +1,18 @@
 """The contract between the model and the pipeline: a mapping, not values.
 
-For every field the model fills one slot:
+Two answer formats carry the same information.
+
+compact (default) - one string per field, what a small model can afford to generate:
+    {"issue_date": "D2", "supplier_name": "ТОО «Арна»", "contract_number": null,
+     "line_items": [{"description": "...", "quantity": "A6", "unit_price": "A7", "amount": "A8"}]}
+  A string that looks like a candidate id is a pick; any other string is an exact quote.
+  Given the document's candidates, the schema lists for every typed field only the ids it may
+  take (dates for issue_date, IBAN / р/с for supplier_account, ...). Constrained decoding then
+  makes it impossible to write a value instead of an id - measured on qwen3.5:4b, an unconstrained
+  string made the model write "2026-01-15" instead of "D1" in a quarter of the fields. The price:
+  if the extractor missed a value, the model cannot quote it; the field comes back null.
+
+full - one slot object per field, lets the model state a value next to a fallback quote:
     {"candidate": "D2", "quote": null, "value": null}        - pick a candidate (normal case)
     {"candidate": null, "quote": "ТОО «Арна»", "value": null} - text field, exact quote
     {"candidate": null, "quote": "1 234,56", "value": "1234.56"} - fallback: no candidate fits
@@ -16,12 +28,22 @@ from __future__ import annotations
 import copy
 import json
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError, create_model, model_validator
 
-from triage.schema import HEADER_FIELDS, LINE_ITEM_FIELDS, ExpenseCategory
+from triage.candidates import Candidate
+from triage.schema import (
+    CANDIDATE_TYPE,
+    EXPENSE_CATEGORIES,
+    HEADER_FIELDS,
+    LINE_ITEM_FIELDS,
+    ExpenseCategory,
+    FieldKind,
+    FieldSpec,
+)
 
+AnswerFormat = Literal["compact", "full"]
 _CANDIDATE_ID = re.compile(r"^[DAIC]\d+$")
 
 
@@ -38,8 +60,11 @@ class Slot(BaseModel):
         if data is None:
             return {}
         if isinstance(data, str):
-            data = data.strip()
-            return {"candidate": data} if _CANDIDATE_ID.match(data) else {"quote": data}
+            stripped = data.strip()
+            marker = stripped.strip("[]")  # small models sometimes echo the "[[D2]]" marker
+            if _CANDIDATE_ID.match(marker):
+                return {"candidate": marker}
+            return {"quote": stripped} if stripped else {}
         if isinstance(data, int | float | bool):
             return {"value": str(data)}
         return data
@@ -74,8 +99,12 @@ class MappingParseError(ValueError):
     pass
 
 
-def response_json_schema() -> dict[str, Any]:
-    """Strict variant of FieldMapping's schema: all keys required, no defaults, no extras."""
+def response_json_schema(
+    answer_format: AnswerFormat = "full", candidates: list[Candidate] | None = None
+) -> dict[str, Any]:
+    """Strict schema for constrained decoding: all keys required, no defaults, no extras."""
+    if answer_format == "compact":
+        return compact_json_schema(candidates)
     schema = copy.deepcopy(FieldMapping.model_json_schema())
 
     def strict(node: Any) -> None:
@@ -95,6 +124,55 @@ def response_json_schema() -> dict[str, Any]:
     return schema
 
 
+def _slot_schema(spec: FieldSpec, candidates: list[Candidate] | None) -> dict[str, Any]:
+    if candidates is None or spec.kind is FieldKind.TEXT:
+        return {"anyOf": [{"type": "string"}, {"type": "null"}]}
+    allowed = [
+        c.id
+        for c in candidates
+        if c.type == CANDIDATE_TYPE[spec.kind]
+        and (spec.kind is not FieldKind.IDENTIFIER or set(c.subtypes) & spec.id_subtypes)
+    ]
+    if not allowed:
+        return {"type": "null"}
+    return {"anyOf": [{"type": "string", "enum": allowed}, {"type": "null"}]}
+
+
+def compact_json_schema(candidates: list[Candidate] | None = None) -> dict[str, Any]:
+    line_fields = [f.name for f in LINE_ITEM_FIELDS]
+    line = {
+        "type": "object",
+        "properties": {f.name: _slot_schema(f, candidates) for f in LINE_ITEM_FIELDS},
+        "required": line_fields,
+        "additionalProperties": False,
+    }
+    properties: dict[str, Any] = {f.name: _slot_schema(f, candidates) for f in HEADER_FIELDS}
+    properties["line_items"] = {"type": "array", "items": line}
+    properties["expense_category"] = {
+        "anyOf": [{"type": "string", "enum": list(EXPENSE_CATEGORIES)}, {"type": "null"}]
+    }
+    properties["is_credit_note"] = {"anyOf": [{"type": "boolean"}, {"type": "null"}]}
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": list(properties),
+        "additionalProperties": False,
+    }
+
+
+def _expand_compact(data: dict[str, Any]) -> dict[str, Any]:
+    names = [f.name for f in LINE_ITEM_FIELDS]
+    items = []
+    for item in data.get("line_items") or []:
+        items.append(dict(zip(names, item, strict=False)) if isinstance(item, list) else item)
+    return {
+        "fields": {f.name: data.get(f.name) for f in HEADER_FIELDS},
+        "line_items": items,
+        "expense_category": data.get("expense_category"),
+        "is_credit_note": data.get("is_credit_note"),
+    }
+
+
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
 
@@ -105,6 +183,8 @@ def parse_mapping(raw: str) -> FieldMapping:
         data = json.loads(text)
     except json.JSONDecodeError as e:
         raise MappingParseError(f"response is not valid JSON: {e}") from e
+    if isinstance(data, dict) and "fields" not in data:
+        data = _expand_compact(data)  # the format is recognized by shape, not by configuration
     try:
         return FieldMapping.model_validate(data)
     except ValidationError as e:
