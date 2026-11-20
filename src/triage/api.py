@@ -6,6 +6,7 @@
     POST /documents/{id}/review     {"values": {path: value}} -> edit log
     GET  /documents/{id}/edits      edit log of the latest review
     GET  /metrics                   quality measured from the edit log
+    GET  /schema                    field names, kinds, descriptions, risk levels (for the UI)
     GET  /health
 
 Run:  triage serve   (or: uvicorn triage.api:create_app --factory)
@@ -15,6 +16,8 @@ Settings come from the environment / .env:
     TRIAGE_MAPPER   llm (default, LLM_* variables) | oracle (gold annotation, for a demo without a
                     model; works only for the synthetic invoices)
     TRIAGE_GOLD     gold file for the oracle, default data/gold.json
+    TRIAGE_INJECT   oracle only, for a demo: model errors to inject, e.g.
+                    "hallucinate:contract_number=ДГ-2026/017;transpose:total"
 
 Processing is synchronous inside the request: no queue (see README, limitations).
 """
@@ -40,8 +43,16 @@ from triage.llm.oracle import OracleMapper
 from triage.pdf_text import NotAPdfError, NoTextLayerError, extract_text
 from triage.pipeline import process_text
 from triage.policy import RiskPolicy
-from triage.result import FieldResult, Flag
+from triage.result import FieldResult, Flag, Risk
 from triage.review import EditEntry, EditError, Value, build_edit_log, quality_metrics
+from triage.schema import (
+    DERIVED_FIELDS,
+    EXPENSE_CATEGORIES,
+    HEADER_FIELDS,
+    LINE_ITEM_FIELDS,
+    FieldKind,
+    FieldSpec,
+)
 from triage.storage import DocumentSummary, Repository, SQLiteRepository, StoredDocument
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -82,6 +93,29 @@ class DocumentOut(BaseModel):
         )
 
 
+class FieldSpecOut(BaseModel):
+    name: str  # "total", "line_items.amount"
+    kind: FieldKind
+    description: str
+    required: bool
+    risk: Risk
+
+    @classmethod
+    def of(cls, name: str, spec: FieldSpec, policy: RiskPolicy) -> FieldSpecOut:
+        return cls(
+            name=name,
+            kind=spec.kind,
+            description=spec.description,
+            required=spec.required,
+            risk=policy.risk_for(name),
+        )
+
+
+class SchemaOut(BaseModel):
+    fields: list[FieldSpecOut]
+    expense_categories: list[str]
+
+
 class ReviewIn(BaseModel):
     values: dict[str, Any] = {}  # path -> final value; empty string or null clears the field
 
@@ -99,13 +133,15 @@ def mapper_factory_from_env(env: Mapping[str, str] = os.environ) -> MapperFactor
     if kind == "oracle":
         gold_path = Path(env.get("TRIAGE_GOLD", "data/gold.json"))
         gold = json.loads(gold_path.read_text(encoding="utf-8"))["documents"]
+        # demo: the same model errors as `triage run --inject`, separated by ';'
+        inject = [spec.strip() for spec in env.get("TRIAGE_INJECT", "").split(";") if spec.strip()]
 
         def oracle(filename: str) -> Mapper:
             if filename not in gold:
                 raise UnknownDocumentError(
                     f"{filename} is not in {gold_path}; the oracle knows only the synthetic set"
                 )
-            return OracleMapper(gold[filename])
+            return OracleMapper(gold[filename], inject=inject)
 
         return oracle
     if kind != "llm":
@@ -138,6 +174,21 @@ def create_app(
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/schema")
+    def schema() -> SchemaOut:
+        """Field descriptions for the UI, from the same registry the pipeline uses."""
+        return SchemaOut(
+            fields=[
+                FieldSpecOut.of(spec.name, spec, risk_policy)
+                for spec in (*HEADER_FIELDS, *DERIVED_FIELDS)
+            ]
+            + [
+                FieldSpecOut.of(f"line_items.{spec.name}", spec, risk_policy)
+                for spec in LINE_ITEM_FIELDS
+            ],
+            expense_categories=list(EXPENSE_CATEGORIES),
+        )
 
     @app.post("/documents", status_code=201)
     def upload(file: UploadFile) -> DocumentOut:

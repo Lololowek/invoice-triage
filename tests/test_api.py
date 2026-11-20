@@ -128,3 +128,29 @@ def test_mapper_config_errors() -> None:
         mapper_factory_from_env({"TRIAGE_MAPPER": "magic"})
     with pytest.raises(ConfigError):
         mapper_factory_from_env({})  # llm without LLM_MODEL
+
+
+def test_schema_describes_every_field_with_its_risk(tmp_path: Path) -> None:
+    schema = make_client(tmp_path).get("/schema").json()
+    by_name = {f["name"]: f for f in schema["fields"]}
+    assert by_name["total"] == {
+        "name": "total",
+        "kind": "money",
+        "description": by_name["total"]["description"],
+        "required": True,
+        "risk": "high",
+    }
+    assert by_name["line_items.amount"]["kind"] == "money"
+    assert by_name["payment_terms"]["risk"] == "low"
+    assert "software" in schema["expense_categories"]
+
+
+def test_oracle_from_env_can_inject_model_errors_for_a_demo(tmp_path: Path) -> None:
+    factory = mapper_factory_from_env({
+        "TRIAGE_MAPPER": "oracle",
+        "TRIAGE_GOLD": str(INVOICES.parent / "gold.json"),
+        "TRIAGE_INJECT": "hallucinate:contract_number=ДГ-2026/017; transpose:total",
+    })  # fmt: skip
+    doc = upload(make_client(tmp_path, factory))
+    flagged = {f["path"] for f in doc["fields"] if f["flags"]}
+    assert {"contract_number", "total"} <= flagged
